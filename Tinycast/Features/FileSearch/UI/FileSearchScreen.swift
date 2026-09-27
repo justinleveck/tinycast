@@ -120,15 +120,37 @@ struct FileSearchScreen: PaletteScreen {
         }
     }
 
-    /// Nothing is said while a query runs: the rows it replaces would only flash a message.
     @ViewBuilder
     private var emptyState: some View {
-        if session.state != .ready {
+        if session.state == .searching {
+            FileSearchSearchingIndicator()
+        } else if session.state != .ready {
             Color.clear
         } else if isShowingRecents {
             EmptyResults(text: "Type to search files and folders")
         } else {
             EmptyResults(text: vm.fileSearchFilter.emptyMessage)
+        }
+    }
+}
+
+/// Silent for a beat, so a quick query never flashes a spinner before its rows land.
+private struct FileSearchSearchingIndicator: View {
+    @State private var isVisible = false
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "progress.indicator").font(.largeTitle)
+                .foregroundStyle(.tertiary)
+                .symbolEffect(.variableColor.iterative.dimInactiveLayers.nonReversing)
+            Text("Searching…").foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .opacity(isVisible ? 1 : 0)
+        .task {
+            let delay = Duration.seconds(Theme.Duration.searchingIndicatorDelay)
+            do { try await Task.sleep(for: delay) } catch { return }
+            withAnimation(.easeIn(duration: Theme.Duration.enter)) { isVisible = true }
         }
     }
 }

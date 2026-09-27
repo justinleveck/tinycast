@@ -309,6 +309,8 @@ enum Theme {
         static let tooltip: TimeInterval = 0.15
         static let dropGuide: TimeInterval = 0.24
         static let tooltipDelay: TimeInterval = 0.4
+        /// Longer than a typical Spotlight answer, so only a slow search ever shows its spinner.
+        static let searchingIndicatorDelay: TimeInterval = 0.3
         /// A control lighting up under the pointer; short enough to feel like a response.
         static let hover: TimeInterval = 0.12
         /// A pop-up chevron turning between its closed and open directions.
