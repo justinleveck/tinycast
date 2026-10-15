@@ -32,6 +32,21 @@ show their parent folder's name, dimmed, which helps when many folders share a n
 The right side previews the selected file: the file itself, followed by its name, location, type,
 size and dates. You can play video and audio there. Nothing plays until you press play.
 
+### Wildcards
+
+Words match anywhere in the name, in any order: `annual report` finds `My Report, Annual.pdf`. A word
+with `*` or `?` in it matches the **whole** name instead, the way a shell does:
+
+| You type        | Finds                                                     |
+| --------------- | --------------------------------------------------------- |
+| `*.pdf`         | every name ending in `.pdf`                               |
+| `invoice*`      | names starting with `invoice`                             |
+| `invoice*2024*` | names starting with `invoice` with `2024` somewhere after |
+| `draft-?.md`    | `draft-1.md`, `draft-a.md`, but not `draft-10.md`         |
+| `annual *.pdf`  | PDFs with `annual` anywhere in the name                   |
+
+`*` stands for any run of characters, `?` for exactly one. Case and accents never matter.
+
 ### Filtering by type
 
 <kbd>⌘</kbd><kbd>P</kbd>, or the **All Types** button, narrows the search:

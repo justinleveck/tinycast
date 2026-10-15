@@ -86,6 +86,16 @@ non-ASCII bytes is folded through Foundation first. The second walks the entries
 name matched, adding the entry's prior and applying the type filter. Each chunk keeps its best 200, only
 the overall best 200 have their paths built, and the overlay of live additions is scored the same way.
 
+### Wildcards
+
+A term holding `*` or `?` is a `FileSearchPattern`: a shell glob over the **whole** name, so `*.pdf`
+means "ends in .pdf" and `invoice*2024*` means "starts with invoice, then 2024 later". `[` is literal,
+and patterns combine with plain words (`annual *.pdf`). A pattern's literal characters join the query
+mask, so the prefilter still skips names that cannot match, and the glob runs after every plain term has
+been found. ASCII names are matched as bytes; a non-ASCII name, already folded, is matched over
+`Character`s, so `?` spans `中` or `👍🏽` rather than one UTF-8 byte. A query of patterns alone scores by
+prior and name length only.
+
 One score orders the results: exact name +4000, name starts with the first term +2000, first term at a
 word or camel-case boundary +1000, terms typed in order +1500, first term ending a word +500, the prior
 × 1500, minus 4 per name byte. Ties go to the shorter path.

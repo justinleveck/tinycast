@@ -28,6 +28,7 @@ struct FileSearchTests {
 
     static func main() {
         queryMatching()
+        wildcards()
         launcherQuery()
         ranking()
         typeFilter()
@@ -40,6 +41,46 @@ struct FileSearchTests {
 
         print(failures == 0 ? "File search tests passed" : "\(failures) file search tests failed")
         exit(failures == 0 ? 0 : 1)
+    }
+
+    static func wildcards() {
+        expect(FileSearchPattern("report") == nil, "a term without * or ? stays a substring")
+        expect(score("*.pdf", "Report.PDF") != nil, "a pattern matches case-insensitively")
+        expect(score("*.pdf", "report.pdf.zip") == nil, "a pattern matches the whole name")
+        expect(score("invoice*2024*", "Invoice-March-2024.pdf") != nil, "a * spans any run")
+        expect(score("invoice*2024*", "old invoice-2024.pdf") == nil, "a leading literal anchors")
+        expect(score("resume*", "Résumé 2024.pdf") != nil, "a pattern ignores diacritics")
+        expect(
+            score("draft-?.md", "draft-1.md") != nil && score("draft-?.md", "draft-10.md") == nil,
+            "? stands for exactly one character")
+        expect(
+            score("a?b.pdf", "a中b.pdf") != nil && score("?.txt", "👍🏽.txt") != nil,
+            "? is one Character, not one UTF-8 byte")
+        expect(
+            score("*ab", "aab") != nil && score("a*b*c", "abxbc") != nil
+                && score("a*b*c", "abxbd") == nil,
+            "a * backtracks until the rest of the pattern fits, or fails")
+        expect(
+            score("report**", "report") != nil && score("report?", "report") == nil,
+            "trailing stars match nothing, a trailing ? needs one character")
+        expect(
+            score("[draft]*", "[draft] plan.md") != nil && score("[draft]*", "d plan.md") == nil,
+            "brackets stay literal: only * and ? are wildcards")
+        expect(
+            score("annual *.pdf", "My Annual Report.pdf") != nil
+                && score("annual *.pdf", "My Annual Report.docx") == nil,
+            "a pattern and a plain word combine")
+
+        let query = FileSearchQuery.prepare("in*.pdf")!
+        expect(query.terms.isEmpty && query.patterns.count == 1, "a pattern is not a literal term")
+        var name = "notes.txt"
+        expect(
+            name.withUTF8(FileSearchQuery.nameMask) & query.mask != query.mask,
+            "a pattern's literal characters prefilter names by mask")
+        expect(
+            score("*.pdf", "a.pdf", prior: 2)! > score("*.pdf", "a.pdf", prior: 0)!
+                && score("*.pdf", "a.pdf")! > score("*.pdf", "longer.pdf")!,
+            "a pattern-only query ranks by location, then by the shorter name")
     }
 
     static func launcherQuery() {

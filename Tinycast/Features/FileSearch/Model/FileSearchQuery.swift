@@ -12,6 +12,7 @@ enum FileSearchQuery {
 
     struct Prepared: Sendable {
         let terms: [[UInt8]]
+        let patterns: [FileSearchPattern]
         let whole: [UInt8]
         let mask: UInt64
     }
@@ -25,11 +26,14 @@ enum FileSearchQuery {
     }
 
     static func prepare(_ query: String) -> Prepared? {
-        let terms = terms(in: query).map { Array(fold($0).utf8) }
-        guard !terms.isEmpty else { return nil }
+        let typed = terms(in: query)
+        let patterns = typed.compactMap(FileSearchPattern.init)
+        let terms = typed.filter { FileSearchPattern($0) == nil }.map { Array(fold($0).utf8) }
+        guard !terms.isEmpty || !patterns.isEmpty else { return nil }
         let whole = Array(terms.joined(separator: [0x20]))
         // From the terms, not `whole`: its spaces are no letter a name has to contain.
-        return Prepared(terms: terms, whole: whole, mask: mask(of: terms.joined()))
+        let required = terms.joined() + patterns.flatMap(\.bytes)
+        return Prepared(terms: terms, patterns: patterns, whole: whole, mask: mask(of: required))
     }
 
     static func fold(_ text: String) -> String {
@@ -81,9 +85,10 @@ enum FileSearchQuery {
             guard let at = find(term, in: name) else { return nil }
             if index == 0 { first = at }
         }
-        let lead = query.terms[0]
-        let wholeAt = query.terms.count == 1 ? first : find(query.whole, in: name)
+        guard query.patterns.allSatisfy({ $0.matches(name) }) else { return nil }
         var score = Int(prior) * priorWeight - 4 * name.count
+        guard let lead = query.terms.first else { return score }
+        let wholeAt = query.terms.count == 1 ? first : find(query.whole, in: name)
         if wholeAt == 0, name.count == query.whole.count {
             score += 4_000
         } else if query.terms.count > 1, wholeAt != nil {
@@ -121,7 +126,7 @@ enum FileSearchQuery {
     }
 
     @inline(__always)
-    private static func lower(_ byte: UInt8) -> UInt8 {
+    static func lower(_ byte: UInt8) -> UInt8 {
         byte &- 0x41 < 26 ? byte | 0x20 : byte
     }
 
